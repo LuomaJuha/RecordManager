@@ -433,7 +433,7 @@ class Forward extends \RecordManager\Base\Record\Forward
                     $videoType = (string)$attributes{'video-tyyppi'};
                     $typeMatch = in_array($videoType, $this->onlineVideoTypes);
                 }
-                $description = $attributes->{'video-lisatieto'};
+                $description = (string)$attributes->{'video-lisatieto'};
             }
             if (!$extensionMatch && !$typeMatch) {
                 continue;
