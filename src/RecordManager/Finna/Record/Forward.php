@@ -95,6 +95,15 @@ class Forward extends \RecordManager\Base\Record\Forward
     protected $primaryLanguage = 'fi';
 
     /**
+     * Array of video types to save in online_url_str_mv
+     * 
+     * @var array
+     */
+    protected $onlineVideoTypes = [
+        'elokuva', 'elokuvaklippi'
+    ];
+
+    /**
      * Return fields to be indexed in Solr (an alternative to an XSL transformation)
      *
      * @return array
@@ -412,20 +421,24 @@ class Forward extends \RecordManager\Base\Record\Forward
         $records = $this->doc->children();
         $records = reset($records);
         foreach (is_array($records) ? $records : [$records] as $record) {
-            if (!isset($record->Title->TitleText)
-                || substr((string)$record->Title->TitleText, -4) !== '.mp4'
-            ) {
-                $attrs = $record->Identifier->attributes();
-                continue;
-            }
-            $videoType = 'elokuva';
-            $description = '';
+            $extensionMatch = !isset($record->Title->TitleText)
+            || substr((string)$record->Title->TitleText, -4) !== '.mp4';
+
+            $typeMatch = false;
+            $videoType = '';
+            $description = null;
             if (isset($record->Title->PartDesignation->Value)) {
                 $attributes = $record->Title->PartDesignation->Value->attributes();
                 if (!empty($attributes{'video-tyyppi'})) {
                     $videoType = (string)$attributes{'video-tyyppi'};
+                    $typeMatch = in_array($videoType, $this->onlineVideoTypes);
                 }
-                $description = (string)$attributes->{'video-lisatieto'};
+                $description = $attributes->{'video-lisatieto'};
+            }
+            if (!$extensionMatch && !$typeMatch) {
+                continue;
+            } else if (empty($videoType)) {
+                $videoType = 'elokuva';
             }
             foreach ($record->ProductionEvent as $event) {
                 $attributes = $event->ProductionEventType->attributes();
@@ -433,7 +446,7 @@ class Forward extends \RecordManager\Base\Record\Forward
                     ->{'elokuva-elonet-materiaali-video-url'};
                 $results[] = [
                     'url' => $url,
-                    'text' => $description ? $description : $videoType,
+                    'text' => $description ?? $videoType,
                     'source' => $this->source
                 ];
             }
