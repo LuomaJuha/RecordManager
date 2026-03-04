@@ -2049,26 +2049,12 @@ class SolrUpdater
                 $hostRecordsFound = false;
                 foreach ($hostRecords as $hostRecord) {
                     $hostRecordsFound = true;
-                    if ($this->hierarchyParentIdField) {
-                        $data[$this->hierarchyParentIdField][]
-                            = $this->createSolrId($hostRecord['_id']);
-                    }
-                    $hostMetadataRecord = $this->metadataRecordCache
-                        ->get($hostRecord['_id']);
+                    $hostMetadataRecord = $this->metadataRecordCache->get($hostRecord['_id']);
                     if (null === $hostMetadataRecord) {
                         $hostMetadataRecord = $this->createRecordFromDbRecord($hostRecord);
                         $this->metadataRecordCache->put($hostRecord['_id'], $hostMetadataRecord);
                     }
-                    $hostTitle = $hostMetadataRecord->getTitle();
-                    if ($this->hierarchyParentTitleField) {
-                        $data[$this->hierarchyParentTitleField][] = $hostTitle;
-                    }
-                    if (
-                        $this->containerTitleField
-                        && empty($data[$this->containerTitleField])
-                    ) {
-                        $data[$this->containerTitleField] = $hostTitle;
-                    }
+                    $this->processContainerFields($data, $hostMetadataRecord);
                     if ($this->copyFromParentRecord) {
                         // Collect data to copy here, but do the actual copying in
                         // the end to avoid duplicate mapping etc.
@@ -2180,6 +2166,32 @@ class SolrUpdater
         $this->enrich($source, $settings, $metadataRecord, $data, 'final');
 
         return $data;
+    }
+
+    /**
+     * Process container fields for component part record.
+     *
+     * @param array          $data               Container part data
+     * @param AbstractRecord $hostMetadataRecord Host metadata record
+     *
+     * @return void
+     */
+    protected function processContainerFields(array &$data, AbstractRecord $hostMetadataRecord): void
+    {
+        if ($this->hierarchyParentIdField) {
+            $data[$this->hierarchyParentIdField][]
+                = $this->createSolrId($hostMetadataRecord->getId());
+        }
+        $hostTitle = $hostMetadataRecord->getTitle();
+        if ($this->hierarchyParentTitleField) {
+            $data[$this->hierarchyParentTitleField][] = $hostTitle;
+        }
+        if (
+            $this->containerTitleField
+            && empty($data[$this->containerTitleField])
+        ) {
+            $data[$this->containerTitleField] = $hostTitle;
+        }
     }
 
     /**
